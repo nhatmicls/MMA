@@ -25,7 +25,7 @@ enum state
 
 typedef struct QandA
 {
-	char question[20];
+	char question[40];
 	uint8_t point;
 }maindata;
 
@@ -81,6 +81,12 @@ void inputquestion()
 	strcpy(record[0].question, "a");		//Copy this
 }
 
+void append(char* s, char c) {
+	int len = strlen(s);
+	s[len] = c;
+	s[len + 1] = '\0';
+}
+
 void setup() 
 {
 	inputquestion();
@@ -116,7 +122,7 @@ void loop()
 	* @note		Mode:
 	*			- HALT: Not do anything
 	*			- REACTION: Show question
-	*			- ENDREACTION: 
+	*			- ENDREACTION: End of survey
 	*/
 	if ((laststatemode != statemode || lastquestioncout != questioncount || current_reaction != reaction)&&SDfound)
 	{
@@ -143,10 +149,15 @@ void loop()
 			}
 			break;
 		case ENDREACTION:
+			char output[maxquestion+1];
 			if (soundenable)
 				soundoutput.play("4.wav");
 			lcd.clear();
 			lcd.print(endscreen);
+			for (uint8_t i = 0; i < maxquestion; i++)
+				append(output, (char)(record[i].point));
+			strcat(output, "\n");
+			Recorddata.println(output);
 			break;
 		default:
 			break;
