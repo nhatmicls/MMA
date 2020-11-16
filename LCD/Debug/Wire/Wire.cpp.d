@@ -1,4 +1,4 @@
-C:\Users\Mikakka\AppData\Local\Temp\VMBuilds\LCD\mega_atmega2560\Debug\Wire\Wire.cpp.o: \
+C:\Users\cptpr\AppData\Local\Temp\VMBuilds\LCD\uno\Debug\Wire\Wire.cpp.o: \
  C:\Program\ Files\ (x86)\Arduino\hardware\arduino\avr\libraries\Wire\src\Wire.cpp \
  C:\Program\ Files\ (x86)\Arduino\hardware\arduino\avr\libraries\Wire\src\utility/twi.h \
  C:\Program\ Files\ (x86)\Arduino\hardware\arduino\avr\libraries\Wire\src\Wire.h \

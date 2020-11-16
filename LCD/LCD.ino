@@ -15,6 +15,7 @@
 #include <LiquidCrystal_I2C.h>
 #include <Wire.h>
 #include <string.h>
+#include <math.h>
 
 enum state
 {
@@ -26,13 +27,13 @@ enum state
 typedef struct QandA
 {
 	char question[40];
-	uint8_t point;
+	uint8_t point = 0;
 }maindata;
 
 #define Button1Pin 2				//Reaction button
 #define Button2Pin 3				//Enter button
-#define maxquestion 3				//How much question
-#define maxreaction 6				//How much point
+#define maxquestion 3			//How much question
+#define maxreaction 5				//How much point
 
 #define SD_ChipSelectPin 10			//SD pin config
 #define Speaker_output 9			//Speaker pin config
@@ -41,9 +42,9 @@ typedef struct QandA
 #define locateXReactionStar 1		//Where is star appear
 #define locateYReactionStar 0		//Where is star from
 
-#define xlongLCD 16					//Length of LCD
-#define ylongLCD 2					//Width of LCD
-#define LCDaddress 0x3F				//Address I2C of LCD
+#define xlongLCD 20					//Length of LCD
+#define ylongLCD 4					//Width of LCD
+#define LCDaddress 0x27				//Address I2C of LCD
 
 bool soundenable = false;			//Set true to enable playsound
 bool SDfound = false;
@@ -56,16 +57,18 @@ TMRpcm soundoutput;
 
 File Recorddata;
 
-uint8_t current_reaction = 0, reaction = 0;
-uint8_t questioncount = 0, lastquestioncout = -1;
+uint8_t last_reaction = 0, reaction = 0;
+uint8_t questioncount = 0, last_questioncout = -1;
+
+uint8_t Bu1 = 0, Bu2 = 0;
 
 char startscreen[] = "Hello";
-char endscreen[] = "Thanks for do survey";
+char endscreen[] = "Thanks for do survey !!!";
 
 char star = '*';
 char reactionout[6];
 
-state statemode = HALT, laststatemode = ENDREACTION;
+state statemode = HALT, last_statemode = ENDREACTION;
 
 /*
 * @brief	Input question to system
@@ -78,20 +81,13 @@ state statemode = HALT, laststatemode = ENDREACTION;
 
 void inputquestion()
 {
-	strcpy(record[0].question, "a");		//Copy this
-}
-
-void append(char* s, char c) {
-	int len = strlen(s);
-	s[len] = c;
-	s[len + 1] = '\0';
+	//strcpy(record[0].question, "1.");		//Copy this
+	strcpy(record[0].question, "1.hello how are you mother facker?");
 }
 
 void setup() 
 {
 	inputquestion();
-
-	Recorddata = SD.open("record.txt", FILE_WRITE);
 
 	lcd.init();
 	lcd.backlight();
@@ -101,8 +97,8 @@ void setup()
 
 	pinMode(Button1Pin, INPUT);
 	pinMode(Button2Pin, INPUT);
-	attachInterrupt(digitalPinToInterrupt(Button1Pin), EXTI1, FALLING);
-	attachInterrupt(digitalPinToInterrupt(Button2Pin), EXTI2, FALLING);
+	attachInterrupt(digitalPinToInterrupt(Button1Pin), EXTI1, CHANGE);
+	attachInterrupt(digitalPinToInterrupt(Button2Pin), EXTI2, CHANGE);
 }
 
 // the loop function runs over and over again until power down or reset
@@ -113,10 +109,14 @@ void loop()
 	*/
 	if (!SD.begin(SD_ChipSelectPin))
 	{
+		lcd.clear();
 		lcd.setCursor(0, 0);
 		lcd.print("SD not found !");
-		SDfound = true;
+		SDfound = false;
+		goto out;
 	}
+	else
+		SDfound = true;
 	/*
 	* @brief	Change state machine
 	* @note		Mode:
@@ -124,7 +124,7 @@ void loop()
 	*			- REACTION: Show question
 	*			- ENDREACTION: End of survey
 	*/
-	if ((laststatemode != statemode || lastquestioncout != questioncount || current_reaction != reaction)&&SDfound)
+	if ((last_statemode != statemode || last_questioncout != questioncount || last_reaction != reaction)&&SDfound)
 	{
 		switch (statemode)
 		{
@@ -134,7 +134,7 @@ void loop()
 			lcd.print(startscreen);
 			break;
 		case REACTION:
-			if (current_reaction != reaction || questioncount == 1)
+			if (last_reaction != reaction || questioncount == 0)
 			{
 				for (int i = 1; i <= reaction; i++)
 					strncat(reactionout, &star, 1);
@@ -144,41 +144,67 @@ void loop()
 				lcd.setCursor(locateYReactionStar, locateXReactionStar);
 				lcd.print(reactionout);
 				record[questioncount].point = reaction;
-				current_reaction = reaction;
 				memset(reactionout, 0, 5);
 			}
 			break;
 		case ENDREACTION:
-			char output[maxquestion+1];
+			Recorddata = SD.open("record.txt", FILE_WRITE);
+			uint16_t output_ui16 = 0;
 			if (soundenable)
 				soundoutput.play("4.wav");
 			lcd.clear();
 			lcd.print(endscreen);
 			for (uint8_t i = 0; i < maxquestion; i++)
-				append(output, (char)(record[i].point));
-			strcat(output, "\n");
-			Recorddata.println(output);
+				output_ui16 += (uint16_t)record[i].point * (uint16_t)pow(10, maxquestion - i - 1);
+			Recorddata.println(output_ui16);
+			questioncount = 0;
+			reaction = 0;
+			Recorddata.close();
 			break;
 		default:
 			break;
 		}
-		laststatemode = statemode;
-		lastquestioncout = questioncount;
+		last_statemode = statemode;
+		last_questioncout = questioncount;
+		last_reaction = reaction;
 	}
+out:
+	delay(5);
 }
 
 void EXTI1()
 {
+	delay(200);
+	if (digitalRead(Button1Pin) == HIGH && Bu1 == 0)
+	{
+		Bu1 = 1;
+		goto out1;
+	}
+	else if (digitalRead(Button1Pin) == LOW && Bu1 == 1)
+		Bu1 = 0;
+	else
+		goto out1;
 	if (statemode == REACTION)
 	{
-		reaction++;
-		if (reaction >= maxreaction)
+		if (++reaction > maxreaction)
 			reaction = 0;
 	}
+out1:
+	delay(5);
 }
 
 void EXTI2()
 {
+	delay(200);
+	if (digitalRead(Button2Pin) == HIGH && Bu2 == 0)
+	{
+		Bu2 = 1;
+		goto out2;
+	}
+	else if (digitalRead(Button2Pin) == LOW && Bu2 == 1)
+		Bu2 = 0;
+	else
+		goto out2;
 	switch (statemode)
 	{
 	case HALT:
@@ -189,16 +215,22 @@ void EXTI2()
 		if (questioncount < maxquestion)
 		{
 			reaction = 0;
-			current_reaction = 7;
+			last_reaction = 6;
 			break;
 		}
-		statemode = ENDREACTION;
+		else
+		{
+			last_reaction = 0;
+			statemode = ENDREACTION;
+		}
 		break;
 	case ENDREACTION:
-		questioncount = 1;
+		questioncount = 0;
 		statemode = HALT;
 		break;
 	default:
 		break;
 	}
+out2:
+	delay(5);
 }

@@ -1,6 +1,6 @@
-C:\Users\Mikakka\AppData\Local\Temp\VMBuilds\LCD\mega_atmega2560\Debug\Wire\utility\twi.c.o: \
+C:\Users\cptpr\AppData\Local\Temp\VMBuilds\LCD\uno\Debug\Wire\utility\twi.c.o: \
  C:\Program\ Files\ (x86)\Arduino\hardware\arduino\avr\libraries\Wire\src\utility\twi.c \
  C:\Program\ Files\ (x86)\Arduino\hardware\arduino\avr\cores\arduino/Arduino.h \
  C:\Program\ Files\ (x86)\Arduino\hardware\arduino\avr\cores\arduino/binary.h \
- C:\Program\ Files\ (x86)\Arduino\hardware\arduino\avr\variants\mega/pins_arduino.h \
+ C:\Program\ Files\ (x86)\Arduino\hardware\arduino\avr\variants\standard/pins_arduino.h \
  C:\Program\ Files\ (x86)\Arduino\hardware\arduino\avr\libraries\Wire\src\utility\twi.h
