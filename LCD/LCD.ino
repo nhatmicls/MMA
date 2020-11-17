@@ -16,6 +16,7 @@
 #include <Wire.h>
 #include <string.h>
 #include <math.h>
+#include <avr/interrupt.h>
 
 enum state
 {
@@ -32,7 +33,7 @@ typedef struct QandA
 
 #define Button1Pin 2				//Reaction button
 #define Button2Pin 3				//Enter button
-#define maxquestion 3			//How much question
+#define maxquestion 3				//How much question
 #define maxreaction 5				//How much point
 
 #define SD_ChipSelectPin 10			//SD pin config
@@ -47,6 +48,14 @@ typedef struct QandA
 #define LCDaddress 0x27				//Address I2C of LCD
 
 bool soundenable = false;			//Set true to enable playsound
+
+char startscreen[] = "Hello";		//Welcome line
+char endscreen[] = "Thanks for do survey !!!";		//End line
+
+/*
+* @brief	Main body of program
+* @note		Do not change any thing if you dont know about this code
+*/
 bool SDfound = false;
 
 LiquidCrystal_I2C lcd(LCDaddress, xlongLCD, ylongLCD);
@@ -62,8 +71,7 @@ uint8_t questioncount = 0, last_questioncout = -1;
 
 uint8_t Bu1 = 0, Bu2 = 0;
 
-char startscreen[] = "Hello";
-char endscreen[] = "Thanks for do survey !!!";
+uint8_t second = 0;
 
 char star = '*';
 char reactionout[6];
@@ -87,6 +95,20 @@ void inputquestion()
 
 void setup() 
 {
+	cli();			//disable interrupt
+
+	// START config timer
+
+	TCCR1A = 0;
+	TCCR1B = 0;
+	TCNT1 = 0;
+	OCR1A = 31249;
+	TCCR1B |= (1 << WGM12);
+	TCCR1B |= (1 << CS12) | (1 << CS10);
+	TIMSK1 |= (1 << OCIE1A);
+
+	//END config timer
+
 	inputquestion();
 
 	lcd.init();
@@ -99,6 +121,8 @@ void setup()
 	pinMode(Button2Pin, INPUT);
 	attachInterrupt(digitalPinToInterrupt(Button1Pin), EXTI1, CHANGE);
 	attachInterrupt(digitalPinToInterrupt(Button2Pin), EXTI2, CHANGE);
+
+	sei();			//enable interrupt
 }
 
 // the loop function runs over and over again until power down or reset
@@ -172,6 +196,10 @@ out:
 	delay(5);
 }
 
+/*
+* @brief	Button 1 ISR
+*/
+
 void EXTI1()
 {
 	delay(200);
@@ -190,8 +218,12 @@ void EXTI1()
 			reaction = 0;
 	}
 out1:
-	delay(5);
+	second = 0;
 }
+
+/*
+* @brief	Button 2 ISR
+*/
 
 void EXTI2()
 {
@@ -232,5 +264,21 @@ void EXTI2()
 		break;
 	}
 out2:
-	delay(5);
+	second = 0;
+}
+
+/*
+* @brief	Timer ISR
+*/
+
+ISR(TIMER1_COMPA_vect)
+{
+	second += 2;
+	if (second == 30)
+	{
+		second = 0;
+		statemode = HALT;
+		questioncount = 0;
+		reaction = 0;
+	}
 }
