@@ -33,21 +33,21 @@ typedef struct QandA
 
 #define Button1Pin 2				//Reaction button
 #define Button2Pin 3				//Enter button
-#define maxquestion 3				//How much question
+#define maxquestion 2				//How much question
 #define maxreaction 5				//How much point
 
 #define SD_ChipSelectPin 10			//SD pin config
 #define Speaker_output 9			//Speaker pin config
-#define Speaker_output_volumn 5		//Speaker volumn config
+#define Speaker_output_volumn 6		//Speaker volumn config
 
-#define locateXReactionStar 1		//Where is star appear
-#define locateYReactionStar 0		//Where is star from
+#define locateXReactionStar 2		//Where is star appear
+#define locateYReactionStar 5		//Where is star from
 
 #define xlongLCD 20					//Length of LCD
 #define ylongLCD 4					//Width of LCD
 #define LCDaddress 0x27				//Address I2C of LCD
 
-bool soundenable = false;			//Set true to enable playsound
+bool soundenable = true;			//Set true to enable playsound
 
 char startscreen[] = "Hello";		//Welcome line
 char endscreen[] = "Thanks for do survey !!!";		//End line
@@ -76,6 +76,8 @@ uint8_t second = 0;
 char star = '*';
 char reactionout[6];
 
+int ioio = 0;
+
 state statemode = HALT, last_statemode = ENDREACTION;
 
 /*
@@ -90,24 +92,33 @@ state statemode = HALT, last_statemode = ENDREACTION;
 void inputquestion()
 {
 	//strcpy(record[0].question, "1.");		//Copy this
-	strcpy(record[0].question, "1.hello how are you mother facker?");
+	strcpy(record[0].question, "1.hello how are how old are you");
+	strcpy(record[1].question, "1.hi how are how old are you");
+}
+
+void printLCD(char output[40])
+{
+	uint16_t longchar = strlen(output);
+	char cache[21];
+	if(longchar<=20)
+		lcd.print(output);
+	else
+	{
+		strncpy(cache, output, 20);
+		cache[20] = '\0';
+		lcd.setCursor(0, 0);
+		lcd.print(cache);
+		memset(cache, 0, 20);
+		strncpy(cache, output+20, (longchar-20));
+		cache[longchar - 20] = '\0';
+		lcd.setCursor(0, 1);
+		lcd.print(cache);
+	}
 }
 
 void setup() 
 {
-	cli();			//disable interrupt
-
-	// START config timer
-
-	TCCR1A = 0;
-	TCCR1B = 0;
-	TCNT1 = 0;
-	OCR1A = 31249;
-	TCCR1B |= (1 << WGM12);
-	TCCR1B |= (1 << CS12) | (1 << CS10);
-	TIMSK1 |= (1 << OCIE1A);
-
-	//END config timer
+	pinMode(7, OUTPUT);
 
 	inputquestion();
 
@@ -121,8 +132,6 @@ void setup()
 	pinMode(Button2Pin, INPUT);
 	attachInterrupt(digitalPinToInterrupt(Button1Pin), EXTI1, CHANGE);
 	attachInterrupt(digitalPinToInterrupt(Button2Pin), EXTI2, CHANGE);
-
-	sei();			//enable interrupt
 }
 
 // the loop function runs over and over again until power down or reset
@@ -155,7 +164,7 @@ void loop()
 		case HALT:
 			lcd.clear();
 			lcd.setCursor(2, 0);
-			lcd.print(startscreen);
+			printLCD(startscreen);
 			break;
 		case REACTION:
 			if (last_reaction != reaction || questioncount == 0)
@@ -164,7 +173,7 @@ void loop()
 					strncat(reactionout, &star, 1);
 				lcd.clear();
 				lcd.setCursor(0, 0);
-				lcd.print(record[questioncount].question);
+				printLCD(record[questioncount].question);
 				lcd.setCursor(locateYReactionStar, locateXReactionStar);
 				lcd.print(reactionout);
 				record[questioncount].point = reaction;
@@ -174,16 +183,19 @@ void loop()
 		case ENDREACTION:
 			Recorddata = SD.open("record.txt", FILE_WRITE);
 			uint16_t output_ui16 = 0;
-			if (soundenable)
-				soundoutput.play("4.wav");
 			lcd.clear();
-			lcd.print(endscreen);
+			printLCD(endscreen);
 			for (uint8_t i = 0; i < maxquestion; i++)
 				output_ui16 += (uint16_t)record[i].point * (uint16_t)pow(10, maxquestion - i - 1);
 			Recorddata.println(output_ui16);
 			questioncount = 0;
 			reaction = 0;
 			Recorddata.close();
+			if (soundenable)
+			{
+				soundoutput.play("4.wav");
+				delay(13000);
+			}
 			break;
 		default:
 			break;
@@ -265,20 +277,4 @@ void EXTI2()
 	}
 out2:
 	second = 0;
-}
-
-/*
-* @brief	Timer ISR
-*/
-
-ISR(TIMER1_COMPA_vect)
-{
-	second += 2;
-	if (second == 30)
-	{
-		second = 0;
-		statemode = HALT;
-		questioncount = 0;
-		reaction = 0;
-	}
 }

@@ -1,35 +1,36 @@
-#include <avr/interrupt.h>
-#define sensor A0
- 
-volatile int temp;
- 
+#include "avr/interrupt.h"
+
+int i=0;
+
 void setup()
-{
-    ​Serial.begin(9600)
-    ​cli();                                  // tắt ngắt toàn cụ
+{                 
+    pinMode(7,OUTPUT);
     
-    ​/* Reset Timer/Counter1 */
-    ​TCCR1A = 0
-    ​TCCR1B = 0
-    ​TIMSK1 = 0
-    
-    ​/* Setup Timer/Counter1 */
-    ​TCCR1B |= (1 << CS11) | (1 << CS10);    // prescale = 6
-    ​TCNT1 = 40536
-    ​TIMSK1 = (1 << TOIE1);                  // Overflow interrupt enable
-    ​sei();                                  // cho phép ngắt toàn cụ
+    ​TCCR1A = 0;
+    TCCR1B = 0;
+    TCNT1 = 34286;
+    TCCR1B |= (1 << WGM12);
+    TCCR1B |= (1 << CS12) | (1 << CS10);
+    TIMSK1 |= (1 << TOIE1);
 }
  
 void loop()
 {
-    ​/* add main program code here */
+    digitalWrite(7,HIGH);
 }
  
  
 ISR (TIMER1_OVF_vect) 
 {
-    ​TCNT1 = 40536
-    ​temp = analogRead(sensor)
-    ​Serial.print(F("Temp:"))
-    ​Serial.println(temp)
+  if(i==0)
+  {
+    digitalWrite(7,HIGH);
+    i=1;
+  }
+  else
+  {
+    digitalWrite(7,LOW);
+    i=0;
+  }
+  TCNT1 = 34286;
 }
